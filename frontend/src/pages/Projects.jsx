@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FolderKanban, X, Trash2 } from 'lucide-react';
+import { FolderKanban, X, Trash2, Plus } from 'lucide-react';
 import api from '../api/axios';
 
 function NewProjectModal({ onClose, onCreated }) {
@@ -72,6 +72,10 @@ export default function Projects() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [toast, setToast] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+
+  const showToast = (msg) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
   useEffect(() => {
     api.get('/projects')
@@ -84,8 +88,11 @@ export default function Projects() {
     try {
       await api.delete(`/projects/${id}`);
       setProjects(prev => prev.filter(p => p.id !== id));
-    } catch {
-      // silently ignore
+      setConfirmDelete(null);
+      showToast('Project deleted');
+    } catch (err) {
+      setConfirmDelete(null);
+      showToast(err.response?.data?.message || 'Failed to delete project');
     }
   };
 
@@ -94,16 +101,20 @@ export default function Projects() {
       {showModal && (
         <NewProjectModal
           onClose={() => setShowModal(false)}
-          onCreated={p => setProjects(prev => [p, ...prev])}
+          onCreated={p => { setProjects(prev => [p, ...prev]); showToast('Project created'); }}
         />
       )}
+
+      {toast && <div className="toast">{toast}</div>}
 
       <div className="page-header">
         <div>
           <h1 className="page-title">Projects</h1>
           <p className="page-subtitle">Manage and track all team projects</p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>+ New project</button>
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <Plus size={15} /> New project
+        </button>
       </div>
 
       {error && <div className="alert-error" style={{ marginBottom: 'var(--space-4)' }}>{error}</div>}
@@ -128,14 +139,32 @@ export default function Projects() {
                   <FolderKanban size={16} color="var(--color-primary)" />
                   <span style={{ fontWeight: 'var(--font-semibold)', fontSize: 'var(--text-base)' }}>{p.name}</span>
                 </div>
-                <button
-                  onClick={() => handleDelete(p.id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-disabled)', padding: 'var(--space-1)', borderRadius: 'var(--radius-sm)', display: 'flex' }}
-                  onMouseEnter={e => e.currentTarget.style.color = 'var(--color-error-text)'}
-                  onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-disabled)'}
-                >
-                  <Trash2 size={14} />
-                </button>
+                {confirmDelete === p.id ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <button
+                      onClick={() => handleDelete(p.id)}
+                      style={{ fontSize: 'var(--text-xs)', color: 'var(--color-error-text)', background: 'var(--color-error-bg)', border: '1px solid var(--color-error-border)', borderRadius: 'var(--radius-sm)', padding: '2px 8px', cursor: 'pointer' }}
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(null)}
+                      style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', background: 'none', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-sm)', padding: '2px 8px', cursor: 'pointer' }}
+                    >
+                      Cancel
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => setConfirmDelete(p.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-disabled)', padding: 'var(--space-1)', borderRadius: 'var(--radius-sm)', display: 'flex' }}
+                    onMouseEnter={e => e.currentTarget.style.color = 'var(--color-error-text)'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'var(--color-text-disabled)'}
+                    title="Delete project"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
               </div>
               {p.description && (
                 <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>{p.description}</p>

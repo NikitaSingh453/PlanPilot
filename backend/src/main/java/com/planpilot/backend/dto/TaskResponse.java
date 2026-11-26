@@ -21,6 +21,8 @@ public class TaskResponse {
     private String ownerName;
     private Long assigneeId;
     private String assigneeName;
+    private Long projectId;
+    private String projectName;
     private LocalDate dueDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -37,6 +39,10 @@ public class TaskResponse {
         r.setOwnerName(task.getOwner().getName());
         r.setAssigneeId(task.getAssignee().getId());
         r.setAssigneeName(task.getAssignee().getName());
+        if (task.getProject() != null) {
+            r.setProjectId(task.getProject().getId());
+            r.setProjectName(task.getProject().getName());
+        }
         r.setDueDate(task.getDueDate());
         r.setCreatedAt(task.getCreatedAt());
         r.setUpdatedAt(task.getUpdatedAt());

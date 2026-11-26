@@ -13,4 +13,6 @@ public class UpdateTaskRequest {
     private TaskStatus status;
     private TaskPriority priority;
     private LocalDate dueDate;
+    private Long assigneeId;
+    private Long projectId;
 }

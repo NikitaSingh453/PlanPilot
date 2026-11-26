@@ -35,8 +35,7 @@ public class ProjectService {
     }
 
     public List<ProjectResponse> getAll(String callerEmail) {
-        User caller = getUser(callerEmail);
-        requireRole(caller, Role.MANAGER);
+        getUser(callerEmail); // just verify authenticated
         return projectRepository.findAll().stream().map(ProjectResponse::from).toList();
     }
 

@@ -1,6 +1,7 @@
 package com.planpilot.backend.controller;
 
 import com.planpilot.backend.dto.RegisterRequest;
+import com.planpilot.backend.dto.UpdateProfileRequest;
 import com.planpilot.backend.dto.UserResponse;
 import com.planpilot.backend.service.UserService;
 import jakarta.validation.Valid;
@@ -18,6 +19,13 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+
+    @PatchMapping("/me")
+    public ResponseEntity<UserResponse> updateProfile(
+            Principal principal,
+            @RequestBody UpdateProfileRequest req) {
+        return ResponseEntity.ok(userService.updateProfile(principal.getName(), req));
+    }
 
     @GetMapping
     public ResponseEntity<List<UserResponse>> getAllEmployees(Principal principal) {
