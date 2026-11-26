@@ -1,6 +1,7 @@
 package com.planpilot.backend.security;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,6 +32,9 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
 
+    @Value("${cors.allowed-origins:http://localhost:5173,http://localhost:5174}")
+    private String allowedOriginsRaw;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         return http
@@ -50,7 +54,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("http://localhost:5173", "http://localhost:5174"));
+        config.setAllowedOrigins(List.of(allowedOriginsRaw.split(",")));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

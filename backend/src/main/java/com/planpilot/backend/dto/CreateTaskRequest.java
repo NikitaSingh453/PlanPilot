@@ -17,4 +17,6 @@ public class CreateTaskRequest {
     private TaskPriority priority;
 
     private LocalDate dueDate;
+
+    private Long projectId;
 }

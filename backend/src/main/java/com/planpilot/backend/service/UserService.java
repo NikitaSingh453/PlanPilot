@@ -1,6 +1,7 @@
 package com.planpilot.backend.service;
 
 import com.planpilot.backend.dto.RegisterRequest;
+import com.planpilot.backend.dto.UpdateProfileRequest;
 import com.planpilot.backend.dto.UserResponse;
 import com.planpilot.backend.model.Role;
 import com.planpilot.backend.model.User;
@@ -22,6 +23,25 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+
+    public UserResponse updateProfile(String callerEmail, UpdateProfileRequest req) {
+        User user = userRepository.findByEmail(callerEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (req.getName() != null && !req.getName().isBlank()) {
+            user.setName(req.getName().trim());
+        }
+
+        if (req.getNewPassword() != null && !req.getNewPassword().isBlank()) {
+            if (req.getCurrentPassword() == null
+                    || !passwordEncoder.matches(req.getCurrentPassword(), user.getPasswordHash())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+            }
+            user.setPasswordHash(passwordEncoder.encode(req.getNewPassword()));
+        }
+
+        return UserResponse.from(userRepository.save(user));
+    }
 
     public List<UserResponse> getAllEmployees(String callerEmail) {
         requireRole(callerEmail, Role.MANAGER);

@@ -3,6 +3,7 @@ package com.planpilot.backend.service;
 import com.planpilot.backend.dto.AuthResponse;
 import com.planpilot.backend.dto.LoginRequest;
 import com.planpilot.backend.dto.RegisterRequest;
+import com.planpilot.backend.model.Role;
 import com.planpilot.backend.model.User;
 import com.planpilot.backend.repository.UserRepository;
 import com.planpilot.backend.security.JwtUtil;
@@ -30,7 +31,7 @@ public class AuthService {
         user.setName(request.getName());
         user.setEmail(request.getEmail());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
-        user.setRole(request.getRole());
+        user.setRole(request.getRole() != null ? request.getRole() : Role.EMPLOYEE);
         userRepository.save(user);
 
         String token = jwtUtil.generateToken(user.getEmail());

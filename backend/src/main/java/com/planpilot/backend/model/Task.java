@@ -35,22 +35,30 @@ public class Task {
     @Column(nullable = false)
     private TaskSource source;
 
-    // User who created this task
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
-    // User this task is assigned to (same as owner for SELF tasks)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assignee_id", nullable = false)
     private User assignee;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id")
+    private Project project;
+
     private LocalDate dueDate;
 
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
 
     @PreUpdate
     public void onUpdate() {

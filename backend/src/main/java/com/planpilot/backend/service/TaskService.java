@@ -4,6 +4,7 @@ import com.planpilot.backend.dto.CreateTaskRequest;
 import com.planpilot.backend.dto.TaskResponse;
 import com.planpilot.backend.dto.UpdateTaskRequest;
 import com.planpilot.backend.model.*;
+import com.planpilot.backend.repository.ProjectRepository;
 import com.planpilot.backend.repository.TaskRepository;
 import com.planpilot.backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -20,8 +21,9 @@ public class TaskService {
 
     private final TaskRepository taskRepository;
     private final UserRepository userRepository;
+    private final ProjectRepository projectRepository;
+    private final NotificationService notificationService;
 
-    // Employees create tasks for themselves only (source = SELF)
     public TaskResponse createSelfTask(String callerEmail, CreateTaskRequest req) {
         User caller = getUser(callerEmail);
 
@@ -33,11 +35,11 @@ public class TaskService {
         task.setSource(TaskSource.SELF);
         task.setOwner(caller);
         task.setAssignee(caller);
+        task.setProject(resolveProject(req.getProjectId()));
 
         return TaskResponse.from(taskRepository.save(task));
     }
 
-    // Managers assign tasks to any user (source = ASSIGNED)
     public TaskResponse assignTask(String callerEmail, Long assigneeId, CreateTaskRequest req) {
         User caller = getUser(callerEmail);
         requireRole(caller, Role.MANAGER);
@@ -53,13 +55,16 @@ public class TaskService {
         task.setSource(TaskSource.ASSIGNED);
         task.setOwner(caller);
         task.setAssignee(assignee);
+        task.setProject(resolveProject(req.getProjectId()));
 
-        return TaskResponse.from(taskRepository.save(task));
+        Task saved = taskRepository.save(task);
+        notificationService.create(
+                assignee,
+                "New task assigned to you: \"" + saved.getTitle() + "\"",
+                "/tasks?open=" + saved.getId());
+        return TaskResponse.from(saved);
     }
 
-    // Returns tasks visible to the caller:
-    // - Managers see all tasks
-    // - Employees see tasks where they are the assignee
     public List<TaskResponse> getMyTasks(String callerEmail) {
         User caller = getUser(callerEmail);
 
@@ -71,7 +76,6 @@ public class TaskService {
                 .stream().map(TaskResponse::from).toList();
     }
 
-    // Full update — only allowed by managers or the owner of a SELF task
     public TaskResponse updateTask(String callerEmail, Long taskId, UpdateTaskRequest req) {
         User caller = getUser(callerEmail);
         Task task = getTask(taskId);
@@ -81,9 +85,9 @@ public class TaskService {
                 && task.getOwner().getId().equals(caller.getId());
 
         if (!isManager && !isSelfOwner) {
-            // Employees on ASSIGNED tasks may only update status
             if (req.getTitle() != null || req.getDescription() != null
-                    || req.getPriority() != null || req.getDueDate() != null) {
+                    || req.getPriority() != null || req.getDueDate() != null
+                    || req.getAssigneeId() != null || req.getProjectId() != null) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                         "Employees can only update the status of assigned tasks");
             }
@@ -94,11 +98,18 @@ public class TaskService {
         if (req.getStatus() != null)      task.setStatus(req.getStatus());
         if (req.getPriority() != null)    task.setPriority(req.getPriority());
         if (req.getDueDate() != null)     task.setDueDate(req.getDueDate());
+        if (req.getProjectId() != null)   task.setProject(resolveProject(req.getProjectId()));
+
+        // Only managers can reassign
+        if (req.getAssigneeId() != null && isManager) {
+            User newAssignee = userRepository.findById(req.getAssigneeId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assignee not found"));
+            task.setAssignee(newAssignee);
+        }
 
         return TaskResponse.from(taskRepository.save(task));
     }
 
-    // Delete — only managers or the owner of a SELF task
     public void deleteTask(String callerEmail, Long taskId) {
         User caller = getUser(callerEmail);
         Task task = getTask(taskId);
@@ -113,6 +124,12 @@ public class TaskService {
         }
 
         taskRepository.delete(task);
+    }
+
+    private Project resolveProject(Long projectId) {
+        if (projectId == null) return null;
+        return projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
     }
 
     private User getUser(String email) {
